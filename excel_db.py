@@ -2,7 +2,7 @@ import pandas as pd
 import os
 from datetime import datetime
 
-# Define Excel file paths
+
 USERS_FILE = 'users.xlsx'
 EXPENSES_FILE = 'expenses.xlsx'
 
