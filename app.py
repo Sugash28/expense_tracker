@@ -1,9 +1,10 @@
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
-from excel_db import (initialize_database, add_user, get_user, 
+from excel_db import (get_monthly_expenses, initialize_database, add_user, get_user, 
                      add_expense, get_yearly_expenses)
 from pdf_generator import create_expense_pdf
+from groq import Groq
 
 app = Flask(__name__)
 CORS(app)
@@ -66,6 +67,47 @@ def generate_pdf(user_id, month, year):
         return send_file(pdf_path, as_attachment=True)
     except Exception as e:
         return jsonify({'message': f'Failed to generate PDF: {str(e)}'}), 400
+
+
+# Add this after your existing imports
+client = Groq(api_key='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')
+
+@app.route('/analyze_expenses/<int:user_id>/<int:month>/<int:year>', methods=['GET'])
+def analyze_expenses(user_id, month, year):
+    try:
+        # Get monthly expenses
+        monthly_expenses = get_monthly_expenses(user_id, month, year)
+        
+        # Format expenses for AI analysis
+        expense_text = "\n".join([
+            f"Title: {exp['title']}, Amount: {exp['amount']}, Date: {exp['date']}"
+            for exp in monthly_expenses
+        ])
+        
+        # Get AI analysis
+        response = client.chat.completions.create(
+            model="llama3-70b-8192",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a financial advisor. Analyze these monthly expenses and provide insights and recommendations:"
+                },
+                {
+                    "role": "user",
+                    "content": f"Monthly expenses for {month}/{year}:\n{expense_text}"
+                }
+            ]
+        )
+        
+        analysis = response.choices[0].message.content
+        
+        return jsonify({
+            'analysis': analysis,
+            'expenses': monthly_expenses
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'message': f'Analysis failed: {str(e)}'}), 400
 
 if __name__ == '__main__':
     app.run(debug=True)
