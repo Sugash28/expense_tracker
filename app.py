@@ -18,12 +18,32 @@ except Exception as e:
 @app.route('/register', methods=['POST'])
 def register():
     data = request.json
-    username = data['username']
-    password = generate_password_hash(data['password'])
+    
+    # Validate required fields
+    if not data or 'username' not in data or 'password' not in data:
+        return jsonify({'message': 'Missing username or password'}), 400
+        
+    username = data['username'].strip()
+    password = data['password']
+    
+    # Validate username and password
+    if len(username) < 3:
+        return jsonify({'message': 'Username must be at least 3 characters'}), 400
+    if len(password) < 6:
+        return jsonify({'message': 'Password must be at least 6 characters'}), 400
+    
+    # Check if username already exists
+    existing_user = get_user(username)
+    if existing_user:
+        return jsonify({'message': 'Username already exists'}), 400
     
     try:
-        user_id = add_user(username, password)
-        return jsonify({'message': 'User registered successfully', 'user_id': user_id}), 200
+        password_hash = generate_password_hash(password)
+        user_id = add_user(username, password_hash)
+        return jsonify({
+            'message': 'User registered successfully',
+            'user_id': user_id
+        }), 200
     except Exception as e:
         return jsonify({'message': f'Registration failed: {str(e)}'}), 400
 
