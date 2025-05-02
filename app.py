@@ -95,6 +95,21 @@ def get_yearly_expense(user_id, year):
         return jsonify(expenses)
     except Exception as e:
         return jsonify({'message': f'Failed to get expenses: {str(e)}'}), 400
+    
+@app.route('/get_monthly_expenses/<int:user_id>/<int:month>/<int:year>', methods=['GET'])
+def get_monthly_expenses(user_id, month, year):
+    try:
+        # Get expenses for the specified month and year
+        expenses = get_monthly_expenses(user_id, month, year)
+        return jsonify({
+            'status': 'success',
+            'expenses': expenses
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 400
 
 @app.route('/generate_pdf/<int:user_id>/<int:month>/<int:year>', methods=['GET'])
 def generate_pdf(user_id, month, year):
