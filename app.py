@@ -121,7 +121,7 @@ def generate_pdf(user_id, month, year):
 
 
 # Add this after your existing imports
-client = Groq(api_key='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')
+client = Groq(api_key='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')
 
 @app.route('/analyze_expenses/<int:user_id>/<int:month>/<int:year>', methods=['GET'])
 def analyze_expenses(user_id, month, year):
