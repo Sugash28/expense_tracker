@@ -123,42 +123,67 @@ def generate_pdf(user_id, month, year):
 # Add this after your existing imports
 client = Groq(api_key='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')
 
+
 @app.route('/analyze_expenses/<int:user_id>/<int:month>/<int:year>', methods=['GET'])
 def analyze_expenses(user_id, month, year):
     try:
-        # Get monthly expenses
-        monthly_expenses = get_monthly_expenses(user_id, month, year)
+        # Get expenses for the month
+        expenses = get_monthly_expenses(user_id, month, year)
         
-        # Format expenses for AI analysis
-        expense_text = "\n".join([
-            f"Title: {exp['title']}, Amount: {exp['amount']}, Date: {exp['date']}"
-            for exp in monthly_expenses
+        if not expenses:
+            return jsonify({
+                'status': 'error',
+                'message': 'No expenses found for the selected period'
+            }), 404
+
+        # Format expenses for analysis
+        total_amount = sum(float(exp.get('amount', 0)) for exp in expenses)
+        expense_text = f"Monthly expenses for {month}/{year}:\n"
+        expense_text += "\n".join([
+            f"- {exp.get('title', 'Unknown')}: ${exp.get('amount', '0')}"
+            for exp in expenses
         ])
         
-        # Get AI analysis
-        response = client.chat.completions.create(
-            model="llama3-70b-8192",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a financial advisor. Analyze these monthly expenses and provide insights and recommendations:"
-                },
-                {
-                    "role": "user",
-                    "content": f"Monthly expenses for {month}/{year}:\n{expense_text}"
-                }
-            ]
-        )
-        
-        analysis = response.choices[0].message.content
-        
-        return jsonify({
-            'analysis': analysis,
-            'expenses': monthly_expenses
-        }), 200
-        
+        try:
+            # Call Groq AI for analysis
+            response = client.chat.completions.create(
+                model="llama3-70b-8192",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a financial advisor. Analyze these expenses and provide insights."
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Total spend: ${total_amount}\n{expense_text}"
+                    }
+                ]
+            )
+            
+            # Extract analysis from AI response
+            analysis = response.choices[0].message.content
+            
+            return jsonify({
+                'status': 'success',
+                'analysis': analysis,
+                'expenses': expenses
+            }), 200
+            
+        except Exception as e:
+            print(f"AI Analysis error: {str(e)}")  # Server-side logging
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to generate AI analysis',
+                'error_details': str(e)
+            }), 500
+            
     except Exception as e:
-        return jsonify({'message': f'Analysis failed: {str(e)}'}), 400
+        print(f"Server error: {str(e)}")  # Server-side logging
+        return jsonify({
+            'status': 'error',
+            'message': 'Server error occurred',
+            'error_details': str(e)
+        }), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
